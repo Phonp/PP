@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Beauti Drink — Dashboard 📊</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans Thai',sans-serif;background:#f1f5f9;color:#1e293b;min-height:100vh}
+
+/* header */
+.header{background:linear-gradient(135deg,#6366f1,#a855f7,#ec4899);
+  padding:28px 24px 24px;text-align:center}
+.header h1{font-size:26px;font-weight:900;color:#fff;margin-bottom:4px}
+.header p{font-size:14px;color:rgba(255,255,255,.8)}
+
+/* import */
+.import-box{background:#fff;margin:20px 16px;border-radius:20px;
+  padding:20px;box-shadow:0 2px 12px rgba(0,0,0,.08)}
+.import-box h3{font-size:16px;font-weight:800;margin-bottom:6px;color:#374151}
+.import-box p{font-size:13px;color:#9ca3af;margin-bottom:12px;line-height:1.5}
+textarea.codes{width:100%;border:2px solid #e5e7eb;border-radius:12px;
+  padding:12px;font-family:monospace;font-size:12px;resize:vertical;
+  min-height:80px;outline:none;color:#374151}
+textarea.codes:focus{border-color:#7c3aed}
+.btn-row{display:flex;gap:10px;margin-top:10px}
+.btn-analyze{flex:1;padding:13px;
+  background:linear-gradient(135deg,#7c3aed,#ec4899);
+  color:#fff;border:none;border-radius:12px;
+  font-family:'Noto Sans Thai',sans-serif;font-size:15px;font-weight:800;
+  cursor:pointer;transition:all .2s}
+.btn-analyze:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(124,58,237,.4)}
+.btn-clear{padding:13px 18px;background:#f3f4f6;color:#6b7280;
+  border:none;border-radius:12px;font-family:'Noto Sans Thai',sans-serif;
+  font-size:14px;font-weight:700;cursor:pointer}
+.btn-clear:hover{background:#e5e7eb}
+.import-status{font-size:13px;font-weight:700;margin-top:8px;min-height:18px}
+
+/* no-data */
+#nodata{text-align:center;padding:60px 20px;color:#9ca3af}
+#nodata .nd-icon{font-size:60px;display:block;margin-bottom:12px}
+#nodata p{font-size:15px;line-height:1.7}
+
+/* main content */
+#main{display:none}
+
+/* stat cards */
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;
+  padding:0 16px;margin-bottom:20px}
+.stat{background:#fff;border-radius:18px;padding:18px 16px;
+  box-shadow:0 2px 10px rgba(0,0,0,.07);text-align:center}
+.stat .sn{font-size:11px;color:#9ca3af;font-weight:700;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}
+.stat .sv{font-size:28px;font-weight:900}
+.stat .sl{font-size:12px;color:#6b7280;margin-top:2px}
+.stat-total .sv{color:#7c3aed}
+.stat-interest .sv{color:#ec4899}
+.stat-drink .sv{font-size:18px;color:#3b82f6}
+.stat-benefit .sv{font-size:18px;color:#10b981}
+
+/* section */
+.section{background:#fff;margin:0 16px 16px;border-radius:20px;
+  padding:20px;box-shadow:0 2px 10px rgba(0,0,0,.07)}
+.section h2{font-size:16px;font-weight:900;margin-bottom:16px;color:#111;
+  display:flex;align-items:center;gap:8px}
+.chart-wrap{position:relative;max-height:260px}
+.chart-wrap canvas{max-height:260px}
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+
+/* recommendations */
+.recs{margin:0 16px 24px}
+.recs h2{font-size:18px;font-weight:900;margin-bottom:14px;color:#111}
+.rec-card{background:#fff;border-radius:18px;padding:18px;
+  margin-bottom:12px;box-shadow:0 2px 10px rgba(0,0,0,.07);
+  border-left:4px solid}
+.rec-card:nth-child(1){border-color:#7c3aed}
+.rec-card:nth-child(2){border-color:#ec4899}
+.rec-card:nth-child(3){border-color:#3b82f6}
+.rec-card:nth-child(4){border-color:#10b981}
+.rec-card:nth-child(5){border-color:#f59e0b}
+.rec-card h3{font-size:15px;font-weight:800;margin-bottom:10px;color:#111}
+.rec-card ul{padding-left:0;list-style:none}
+.rec-card li{font-size:14px;color:#374151;padding:5px 0;
+  display:flex;align-items:flex-start;gap:8px;line-height:1.5}
+.rec-card li::before{content:'→';color:#7c3aed;font-weight:700;flex-shrink:0}
+
+/* comments */
+.comment-list{display:flex;flex-direction:column;gap:8px}
+.comment{background:#f9fafb;border-radius:10px;padding:10px 14px;
+  font-size:14px;color:#374151;line-height:1.5}
+.comment::before{content:'"';color:#a855f7;font-weight:900;font-size:18px;margin-right:4px}
+
+@media(max-width:480px){
+  .stats{grid-template-columns:1fr 1fr}
+  .chart-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>💖 Beauti Drink Dashboard</h1>
+  <p>วิเคราะห์ข้อมูลจาก Gen Z — เพื่อพัฒนาผลิตภัณฑ์</p>
+</div>
+
+<div class="import-box">
+  <h3>📥 นำเข้าข้อมูล</h3>
+  <p>วาง Response Code จากผู้ตอบแต่ละคน (คนละบรรทัด)<br>
+     หรือคลิก <strong>วิเคราะห์เลย</strong> เพื่อดูข้อมูลในเครื่องนี้</p>
+  <textarea class="codes" id="codesInput" placeholder="วางโค้ดที่ได้จาก survey ที่นี่ (ถ้ามี)&#10;ถ้าไม่มีโค้ด กดวิเคราะห์เลยได้เลย"></textarea>
+  <div class="btn-row">
+    <button class="btn-analyze" onclick="analyze()">🔍 วิเคราะห์เลย!</button>
+    <button class="btn-clear" onclick="clearAll()">🗑️ ล้าง</button>
+  </div>
+  <div class="import-status" id="importStatus"></div>
+</div>
+
+<div id="nodata">
+  <span class="nd-icon">📊</span>
+  <p>กดปุ่ม <strong>"วิเคราะห์เลย!"</strong> ด้านบน<br>
+     เพื่อดูผลจากข้อมูลในเครื่องนี้<br>
+     หรือวาง Response Code จากผู้ตอบก่อน</p>
+</div>
+
+<div id="main">
+  <!-- stat cards -->
+  <div class="stats" id="statsRow"></div>
+
+  <!-- charts row 1 -->
+  <div class="section">
+    <h2>👥 เพศและช่วงอายุ</h2>
+    <div class="chart-grid">
+      <div class="chart-wrap"><canvas id="cGender"></canvas></div>
+      <div class="chart-wrap"><canvas id="cAge"></canvas></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>🥤 เครื่องดื่มที่ชอบ</h2>
+    <div class="chart-wrap" style="max-height:300px">
+      <canvas id="cFav"></canvas>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>✨ สิ่งที่ต้องการจากเครื่องดื่ม</h2>
+    <div class="chart-wrap" style="max-height:300px">
+      <canvas id="cBenefit"></canvas>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>😋 รสชาติที่ชอบ &amp; 💰 งบประมาณ</h2>
+    <div class="chart-grid">
+      <div class="chart-wrap"><canvas id="cFlavor"></canvas></div>
+      <div class="chart-wrap"><canvas id="cBudget"></canvas></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>🛒 ช่องทางซื้อ</h2>
+    <div class="chart-wrap"><canvas id="cChannel"></canvas></div>
+  </div>
+
+  <div class="section">
+    <h2>⭐ ความสนใจ Beauti Drink</h2>
+    <div class="chart-wrap"><canvas id="cInterest"></canvas></div>
+    <div id="interestAvg" style="text-align:center;margin-top:12px;font-size:14px;font-weight:700;color:#ec4899"></div>
+  </div>
+
+  <!-- recommendations -->
+  <div class="recs">
+    <h2>💡 ข้อเสนอแนะสำหรับพัฒนาผลิตภัณฑ์</h2>
+    <div id="recCards"></div>
+  </div>
+
+  <!-- comments -->
+  <div class="section" id="commentsSection" style="display:none">
+    <h2>💬 ความคิดเห็นจากผู้ตอบ</h2>
+    <div class="comment-list" id="commentList"></div>
+  </div>
+
+  <div style="height:32px"></div>
+</div>
+
+<script>
+const PALETTE=['#7c3aed','#ec4899','#3b82f6','#10b981','#f59e0b','#ef4444','#6366f1','#14b8a6','#f472b6','#fb923c'];
+const charts={};
+
+function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+
+function mkChart(id,config){
+  destroyChart(id);
+  const ctx=document.getElementById(id);
+  if(ctx)charts[id]=new Chart(ctx,config);
+}
+
+function countField(recs,field){
+  const c={};
+  recs.forEach(r=>{
+    const v=r[field];
+    if(Array.isArray(v))v.forEach(x=>{c[x]=(c[x]||0)+1;});
+    else if(v)c[v]=(c[v]||0)+1;
+  });
+  return c;
+}
+
+function sortedEntries(obj){return Object.entries(obj).sort((a,b)=>b[1]-a[1]);}
+function topKeys(obj,n=3){return sortedEntries(obj).slice(0,n).map(([k])=>k);}
+
+function decode(code){
+  try{
+    const pad=code+'='.repeat((4-code.length%4)%4);
+    return JSON.parse(decodeURIComponent(escape(atob(pad))));
+  }catch(e){
+    try{return JSON.parse(atob(code));}catch{return null;}
+  }
+}
+
+function analyze(){
+  const input=document.getElementById('codesInput').value.trim();
+  let recs=JSON.parse(localStorage.getItem('bd')||'[]');
+  let imported=0;
+
+  if(input){
+    const tokens=input.split(/[\n\s,]+/).map(s=>s.trim()).filter(Boolean);
+    tokens.forEach(t=>{
+      const d=decode(t);
+      if(d&&d.gender){recs.push(d);imported++;}
+    });
+    if(imported>0){
+      const merged=[...JSON.parse(localStorage.getItem('bd')||'[]')];
+      tokens.forEach(t=>{const d=decode(t);if(d&&d.gender)merged.push(d);});
+      localStorage.setItem('bd',JSON.stringify(merged));
+    }
+  }
+
+  const total=recs.length;
+  if(total===0){
+    document.getElementById('importStatus').innerHTML='<span style="color:#ef4444">ยังไม่มีข้อมูล — ให้คนมากรอก survey ก่อนนะ 😊</span>';
+    return;
+  }
+
+  const st=imported>0?`✅ นำเข้า ${imported} คำตอบใหม่ | รวมทั้งหมด ${total} คน`:`📊 พบข้อมูล ${total} คน ในเครื่องนี้`;
+  document.getElementById('importStatus').innerHTML=`<span style="color:#10b981">${st}</span>`;
+
+  const gender=countField(recs,'gender');
+  const age=countField(recs,'age');
+  const fav=countField(recs,'fav');
+  const flavor=countField(recs,'flavor');
+  const benefit=countField(recs,'benefit');
+  const budget=countField(recs,'budget');
+  const channel=countField(recs,'channel');
+  const interest=countField(recs,'interest');
+  const intVals=recs.map(r=>Number(r.interest)).filter(v=>v>0);
+  const avgInt=intVals.length?(intVals.reduce((a,b)=>a+b,0)/intVals.length).toFixed(1):0;
+  const notes=recs.map(r=>r.note).filter(Boolean);
+
+  // show main
+  document.getElementById('nodata').style.display='none';
+  document.getElementById('main').style.display='block';
+
+  // stats
+  const topDrink=topKeys(fav,1)[0]||'—';
+  const topBenefit=topKeys(benefit,1)[0]||'—';
+  document.getElementById('statsRow').innerHTML=`
+    <div class="stat stat-total"><div class="sn">ผู้ตอบทั้งหมด</div><div class="sv">${total}</div><div class="sl">คน</div></div>
+    <div class="stat stat-interest"><div class="sn">ความสนใจเฉลี่ย</div><div class="sv">${avgInt}⭐</div><div class="sl">จาก 5</div></div>
+    <div class="stat stat-drink"><div class="sn">ดื่มยอดนิยม</div><div class="sv">${topDrink}</div><div class="sl">อันดับ 1</div></div>
+    <div class="stat stat-benefit"><div class="sn">ต้องการ</div><div class="sv">${topBenefit}</div><div class="sl">สูงสุด</div></div>`;
+
+  // chart: gender donut
+  const gKeys=Object.keys(gender),gVals=Object.values(gender);
+  mkChart('cGender',{type:'doughnut',data:{labels:gKeys,datasets:[{data:gVals,
+    backgroundColor:PALETTE,borderWidth:0}]},
+    options:{plugins:{legend:{position:'bottom',labels:{font:{family:'Noto Sans Thai',size:12}}}},
+    cutout:'60%',maintainAspectRatio:true}});
+
+  // chart: age bar
+  const aKeys=Object.keys(age),aVals=Object.values(age);
+  mkChart('cAge',{type:'bar',data:{labels:aKeys,datasets:[{data:aVals,
+    backgroundColor:PALETTE,borderRadius:8}]},
+    options:{plugins:{legend:{display:false}},scales:{y:{ticks:{stepSize:1},
+    grid:{color:'#f1f5f9'}},x:{grid:{display:false},ticks:{font:{family:'Noto Sans Thai'}}}},
+    maintainAspectRatio:true}});
+
+  // chart: fav drinks horizontal
+  const fSorted=sortedEntries(fav);
+  mkChart('cFav',{type:'bar',data:{labels:fSorted.map(([k])=>k),
+    datasets:[{data:fSorted.map(([,v])=>v),
+    backgroundColor:PALETTE,borderRadius:8,borderSkipped:false}]},
+    options:{indexAxis:'y',plugins:{legend:{display:false}},
+    scales:{x:{grid:{color:'#f1f5f9'},ticks:{stepSize:1}},
+    y:{grid:{display:false},ticks:{font:{family:'Noto Sans Thai',size:13}}}},
+    maintainAspectRatio:false},});
+  document.querySelector('#cFav').parentElement.style.maxHeight=Math.max(200,fSorted.length*38)+'px';
+
+  // chart: benefit horizontal
+  const bSorted=sortedEntries(benefit);
+  mkChart('cBenefit',{type:'bar',data:{labels:bSorted.map(([k])=>k),
+    datasets:[{data:bSorted.map(([,v])=>v),
+    backgroundColor:['#7c3aed','#a855f7','#c084fc','#ddd6fe','#ede9fe','#f3f4f6'],
+    borderRadius:8,borderSkipped:false}]},
+    options:{indexAxis:'y',plugins:{legend:{display:false}},
+    scales:{x:{grid:{color:'#f1f5f9'},ticks:{stepSize:1}},
+    y:{grid:{display:false},ticks:{font:{family:'Noto Sans Thai',size:13}}}},
+    maintainAspectRatio:false}});
+  document.querySelector('#cBenefit').parentElement.style.maxHeight=Math.max(180,bSorted.length*38)+'px';
+
+  // chart: flavor bar
+  const flSorted=sortedEntries(flavor);
+  mkChart('cFlavor',{type:'bar',data:{labels:flSorted.map(([k])=>k),
+    datasets:[{data:flSorted.map(([,v])=>v),
+    backgroundColor:['#ec4899','#f472b6','#fb7185','#fca5a5','#fde68a','#bbf7d0'],
+    borderRadius:8}]},
+    options:{plugins:{legend:{display:false}},
+    scales:{y:{ticks:{stepSize:1},grid:{color:'#f1f5f9'}},
+    x:{grid:{display:false},ticks:{font:{family:'Noto Sans Thai',size:11},maxRotation:30}}},
+    maintainAspectRatio:true}});
+
+  // chart: budget donut
+  const buKeys=Object.keys(budget),buVals=Object.values(budget);
+  mkChart('cBudget',{type:'doughnut',data:{labels:buKeys,datasets:[{data:buVals,
+    backgroundColor:['#10b981','#3b82f6','#f59e0b','#ef4444'],borderWidth:0}]},
+    options:{plugins:{legend:{position:'bottom',labels:{font:{family:'Noto Sans Thai',size:11},boxWidth:12}}},
+    cutout:'55%',maintainAspectRatio:true}});
+
+  // chart: channel bar
+  const chSorted=sortedEntries(channel);
+  mkChart('cChannel',{type:'bar',data:{labels:chSorted.map(([k])=>k),
+    datasets:[{data:chSorted.map(([,v])=>v),
+    backgroundColor:PALETTE,borderRadius:8}]},
+    options:{plugins:{legend:{display:false}},
+    scales:{y:{ticks:{stepSize:1},grid:{color:'#f1f5f9'}},
+    x:{grid:{display:false},ticks:{font:{family:'Noto Sans Thai'}}}},
+    maintainAspectRatio:true}});
+
+  // chart: interest distribution
+  const intLabels=['1⭐','2⭐','3⭐','4⭐','5⭐'];
+  const intData=intLabels.map((_,i)=>interest[String(i+1)]||0);
+  mkChart('cInterest',{type:'bar',data:{labels:intLabels,
+    datasets:[{data:intData,
+    backgroundColor:['#fca5a5','#fcd34d','#86efac','#6ee7b7','#34d399'],
+    borderRadius:10}]},
+    options:{plugins:{legend:{display:false}},
+    scales:{y:{ticks:{stepSize:1},grid:{color:'#f1f5f9'}},x:{grid:{display:false}}},
+    maintainAspectRatio:true}});
+  const stars='⭐'.repeat(Math.round(avgInt));
+  document.getElementById('interestAvg').innerHTML=`คะแนนเฉลี่ย <span style="font-size:20px">${stars}</span> <strong>${avgInt} / 5</strong>`;
+
+  // comments
+  if(notes.length){
+    document.getElementById('commentsSection').style.display='block';
+    document.getElementById('commentList').innerHTML=notes.map(n=>`<div class="comment">${n}</div>`).join('');
+  }
+
+  // recommendations
+  buildRecs(total,gender,age,fav,flavor,benefit,budget,channel,parseFloat(avgInt));
+}
+
+function buildRecs(total,gender,age,fav,flavor,benefit,budget,channel,avgInt){
+  const ingMap={
+    'ผิวกระจ่าง':'Collagen Peptide 5,000–10,000 mg + Vitamin C',
+    'หน้าชุ่มชื่น':'Hyaluronic Acid 100–200 mg',
+    'พลังงานเพิ่ม':'Vitamin B Complex + Ginseng Extract',
+    'โฟกัสดีขึ้น':'L-Theanine + Natural Caffeine',
+    'ดีท็อก':'Chlorophyll / Green Tea EGCG 200 mg',
+    'ลดน้ำหนัก':'L-Carnitine 500 mg + CLA',
+  };
+  const flvMap={
+    'หวานน้อย':'Muscat grape หรือ White tea base — หอมละมุน ไม่หนักเกิน',
+    'หวานอมเปรี้ยว':'Lychee-lime หรือ Peach-orange blend — ซ่าเบาๆ',
+    'ผลไม้หอม':'Strawberry passionfruit — หอมหวานเป็นธรรมชาติ',
+    'ครีมมี่':'Peach yogurt หรือ Strawberry milk flavor',
+    'ขมหอม':'Matcha + Oat milk blend',
+    'มีฟอง':'Sparkling base — เพิ่มความรู้สึก premium',
+  };
+
+  const topBenefits=topKeys(benefit,3);
+  const topFlavors=topKeys(flavor,2);
+  const topBudget=sortedEntries(budget)[0];
+  const topChans=topKeys(channel,3);
+  const topAge=topKeys(age,1)[0]||'18–25';
+  const topDrinks=topKeys(fav,2);
+
+  const pct=(n)=>total?Math.round(n/total*100):0;
+
+  const recs=[
+    {
+      icon:'🧪',title:'สูตรที่แนะนำ (Core Ingredients)',
+      items:topBenefits.map(b=>ingMap[b]||b).concat([
+        topDrinks.includes('Collagen drink')?'✅ มีกลุ่มที่ดื่ม Collagen อยู่แล้ว — segment นี้พร้อม':'ควรสร้าง awareness ว่า Beauti Drink ต่างจาก collagen ทั่วไปอย่างไร'
+      ])
+    },
+    {
+      icon:'🍹',title:'รสชาติที่ควรพัฒนา',
+      items:topFlavors.map(f=>flvMap[f]||f).concat([
+        topFlavors.includes('มีฟอง')?'🫧 พิจารณาทำ Sparkling version ด้วย':'ทำ still (ไม่มีฟอง) เป็นหลักก่อน'
+      ])
+    },
+    {
+      icon:'💰',title:'กลยุทธ์ราคา',
+      items: topBudget?[
+        `Sweet spot: ${topBudget[0]} (${pct(topBudget[1])}% ของผู้ตอบยอมจ่าย)`,
+        'แนะนำ Entry tier ≤39 บาท (everyday drink) + Premium tier 79–89 บาท (gift set)',
+        topBudget[0].includes('100')?'กลุ่มนี้ยอมจ่าย premium — เน้น packaging + story สินค้า':'ระวังตั้งราคาเกิน 60 บาท จะเสียลูกค้า',
+      ]:['ยังไม่มีข้อมูลเพียงพอ']
+    },
+    {
+      icon:'🛒',title:'ช่องทางจำหน่าย (Priority)',
+      items:topChans.map((c,i)=>`${i===0?'🔥 หลัก':'รอง'}: ${c}`).concat([
+        topChans.includes('TikTok Shop')?'TikTok Shop สำคัญมาก — ต้องมีไลฟ์สด weekly':'ทำ TikTok content ก่อน แล้วค่อยเปิด shop',
+      ])
+    },
+    {
+      icon:'📣',title:'การตลาดและ Positioning',
+      items:[
+        `กลุ่มเป้าหมายหลัก: อายุ ${topAge} ปี`,
+        'TikTok + Instagram Reels = ช่องทาง reach หลัก',
+        'ใช้ Micro-influencer (Beauty/Health niche, 10K–100K followers) — น่าเชื่อถือกว่าดารา',
+        avgInt>=4?`🔥 ความสนใจสูง (${avgInt}/5) — เปิด Pre-order + Early bird ได้เลย!`:
+          avgInt>=3?`ความสนใจปานกลาง (${avgInt}/5) — ทำ Sampling campaign ก่อน launch`:
+          `ความสนใจยังต่ำ (${avgInt}/5) — ต้องสร้าง Education content ก่อน`,
+        'Packaging ต้องสวย Instagrammable — ขวดใส สีพาสเทล gradient',
+      ]
+    },
+  ];
+
+  document.getElementById('recCards').innerHTML=recs.map(r=>`
+    <div class="rec-card">
+      <h3>${r.icon} ${r.title}</h3>
+      <ul>${r.items.map(i=>`<li>${i}</li>`).join('')}</ul>
+    </div>`).join('');
+}
+
+function clearAll(){
+  if(confirm('ต้องการลบข้อมูลทั้งหมดในเครื่องนี้ใช่ไหม?')){
+    localStorage.removeItem('bd');
+    document.getElementById('codesInput').value='';
+    document.getElementById('importStatus').innerHTML='';
+    document.getElementById('main').style.display='none';
+    document.getElementById('nodata').style.display='block';
+    Object.keys(charts).forEach(k=>{charts[k].destroy();delete charts[k];});
+  }
+}
+
+// auto-load if local data exists
+window.addEventListener('DOMContentLoaded',()=>{
+  const d=JSON.parse(localStorage.getItem('bd')||'[]');
+  if(d.length>0){
+    document.getElementById('importStatus').innerHTML=
+      `<span style="color:#7c3aed">💾 พบข้อมูล ${d.length} คน ในเครื่องนี้ — กด วิเคราะห์เลย!</span>`;
+  }
+});
+</script>
+</body>
+</html>
